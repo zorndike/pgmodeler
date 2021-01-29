@@ -24,6 +24,16 @@ Parameter::Parameter()
 	is_in=is_out=is_variadic=false;
 }
 
+Parameter::Parameter(const Parameter &param) : Parameter()
+{
+	setName(param.obj_name);
+	setType(param.type);
+	setIn(param.is_in);
+	setOut(param.is_out);
+	setVariadic(param.is_variadic);
+	setDefaultValue(param.default_value);
+}
+
 Parameter::Parameter(const QString &name, PgSqlType type, bool in, bool out, bool variadic) : Parameter()
 {
 	setName(name);
@@ -81,6 +91,21 @@ bool Parameter::isVariadic()
 	return is_variadic;
 }
 
+QString Parameter::getModeString()
+{
+	QString mode;
+
+	if(is_variadic)
+		mode = "VARIADIC";
+	else
+	{
+		if(is_in) mode = "IN";
+		if(is_out) mode += "OUT";
+	}
+
+	return mode;
+}
+
 void Parameter::operator = (const Parameter &param)
 {
 	this->obj_name=param.obj_name;
@@ -107,9 +132,9 @@ QString Parameter::getCodeDefinition(unsigned def_type, bool reduced_form)
 	else
 		attributes[Attributes::Name]=obj_name;
 
-	attributes[Attributes::ParamIn]=(is_in ? Attributes::True : QString());
-	attributes[Attributes::ParamOut]=(is_out ? Attributes::True : QString());
-	attributes[Attributes::ParamVariadic]=(is_variadic ? Attributes::True : QString());
+	attributes[Attributes::ParamIn]=(is_in ? Attributes::True : "");
+	attributes[Attributes::ParamOut]=(is_out ? Attributes::True : "");
+	attributes[Attributes::ParamVariadic]=(is_variadic ? Attributes::True : "");
 	attributes[Attributes::DefaultValue]=default_value;
 	attributes[Attributes::Type]=type.getCodeDefinition(def_type);
 

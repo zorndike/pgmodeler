@@ -18,6 +18,7 @@
 
 #include "syntaxhighlighter.h"
 #include "numberedtexteditor.h"
+#include "qtcompat/qplaintexteditcompat.h"
 
 QFont SyntaxHighlighter::default_font=QFont(QString("Source Code Pro"), 10);
 
@@ -32,13 +33,7 @@ SyntaxHighlighter::SyntaxHighlighter(QPlainTextEdit *parent, bool single_line_mo
 	parent->installEventFilter(this);
 
 	if(use_custom_tab_width)
-	{
-		#if (QT_VERSION < QT_VERSION_CHECK(5, 14, 0))
-			parent->setTabStopWidth(NumberedTextEditor::getTabDistance());
-		#else
-			parent->setTabStopDistance(NumberedTextEditor::getTabDistance());
-		#endif
-	}
+		QtCompat::setTabStopDistance(parent, NumberedTextEditor::getTabDistance());
 
 	//Adjusting the size of the parent input according to the current font size
 	if(single_line_mode)
@@ -109,10 +104,14 @@ void SyntaxHighlighter::highlightBlock(const QString &txt)
 		setCurrentBlockState(SimpleBlock);
 	}
 
-	/* If the previous block info is a open multiline expression the current block will inherit this settings
-	 to force the same text formatting */
+	/* If the previous block info is an open multiline expression the current block will inherit this settings
+	 * to force the same text formatting.
+	 *
+	 * There is a special case for empty texts that are inserted right after a
+	 * multiline expression, here we force the inheritance of the formatting from the previous block anyway.
+	 * This is done in order to avoid the next line (after the blank one) to lost track of the previous formatting */
 	if(prev_info && currentBlock().previous().userState()==OpenExprBlock &&
-		 currentBlockState() == OpenExprBlock)
+		 (currentBlockState() == OpenExprBlock || (txt.isEmpty() && currentBlockState() < 0)))
 	{
 		info->group=prev_info->group;
 		info->has_exprs=prev_info->has_exprs;
@@ -295,7 +294,7 @@ QString SyntaxHighlighter::identifyWordGroup(const QString &word, const QChar &l
 		}
 
 		if(!match)
-			return QString();
+			return "";
 		else
 		{
 			info->group=group;

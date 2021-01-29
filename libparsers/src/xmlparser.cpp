@@ -59,7 +59,7 @@ void XmlParser::removeDTD()
 		if(pos1 >=0 && (pos2 >=0 || pos3 >= 0))
 		{
 			len=((pos2 > pos3) ? (pos2-pos1)+3 :  (pos3-pos2)+3);
-			xml_buffer.replace(pos1,len,QString());
+			xml_buffer.replace(pos1,len,"");
 		}
 	}
 }
@@ -114,7 +114,7 @@ void XmlParser::loadXMLBuffer(const QString &xml_buf)
 		{
 			tam=(pos2-pos1)+3;
 			xml_decl=xml_buffer.mid(pos1, tam);
-			xml_buffer.replace(pos1,tam,QString());
+			xml_buffer.replace(pos1,tam,"");
 		}
 		else
 			xml_decl=QString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -162,7 +162,7 @@ void XmlParser::readBuffer()
 	if(!xml_buffer.isEmpty())
 	{
 		//Inserts the XML declaration
-		buffer+=xml_decl;
+		buffer+=xml_decl.toUtf8();
 
 		//Configures the parser, initially, to not validate the document against the dtd
 		parser_opt=( XML_PARSE_NOBLANKS | XML_PARSE_NONET | XML_PARSE_NOENT | XML_PARSE_BIG_LINES);
@@ -171,13 +171,13 @@ void XmlParser::readBuffer()
 		if(!dtd_decl.isEmpty())
 		{
 			//Inserts the default software DTD declarion into XML buffer
-			buffer+=dtd_decl;
+			buffer+=dtd_decl.toUtf8();
 
 			//Now configures the parser to validate the buffer against the DTD
 			parser_opt=(parser_opt | XML_PARSE_DTDLOAD | XML_PARSE_DTDVALID);
 		}
 
-		buffer+=xml_buffer;
+		buffer+=xml_buffer.toUtf8();
 
 		//Create an xml document from the buffer
 		xml_doc=xmlReadMemory(buffer.data(), buffer.size(),	nullptr, nullptr, parser_opt);
@@ -262,12 +262,12 @@ void XmlParser::restartParser()
 		xmlFreeDoc(xml_doc);
 		xml_doc=nullptr;
 	}
-	dtd_decl=xml_buffer=xml_decl=QString();
+	dtd_decl=xml_buffer=xml_decl="";
 
 	while(!elems_stack.empty())
 		elems_stack.pop();
 
-	xml_doc_filename=QString();
+	xml_doc_filename="";
 	xmlResetLastError();
 }
 
@@ -456,8 +456,9 @@ int XmlParser::getBufferLineCount()
 QString XmlParser::convertCharsToXMLEntities(QString buf)
 {
 	QTextStream ts(&buf);
-	QRegExp attr_regexp=QRegExp("([a-z]|\\-)+( )*(=\\\")"),
-			attr_end_regexp=QRegExp("(\\\")(( )|(\\t)|(\\n)|((\\/\\>)|(\\>)))");
+	QRegExp attr_regexp=QRegExp("([a-z]|\\-|[0-9])+( )*(=\\\")"),
+			attr_end_regexp=QRegExp("(\\\")((\\t)+|(\\n)|((\\/\\>)|(\\>)))"),
+			next_attr_regexp=QRegExp(QString("(( )|(\\t))+%1").arg(attr_regexp.pattern()));
 	int attr_start=0, attr_end=0, count=0, cdata_start = -1,
 			cdata_end = -1, start = -1, end = -1, pos = 0;
 	QString value, fmt_buf, lin;
@@ -490,7 +491,15 @@ QString XmlParser::convertCharsToXMLEntities(QString buf)
 
 			do
 			{
-				attr_end = attr_end_regexp.indexIn(lin, attr_start + attr_regexp.matchedLength());
+				// First we try to find the next attribute so we can delimite the current attribute's value
+				attr_end = next_attr_regexp.indexIn(lin, attr_start + attr_regexp.matchedLength());
+
+				// Found the next attribute we decrement in 1 char the current attribute's value in order to eliminate the unneeded "
+				if(attr_end >= 0)
+					attr_end--;
+				else
+					// If there's no next attribute we try to match the end of the attribute's value at the end of the line/tag
+					attr_end = attr_end_regexp.indexIn(lin, attr_start + attr_regexp.matchedLength());
 
 				if(attr_start >= 0 && attr_end >= 0 &&
 					 //CDATA absent in the current line
@@ -500,7 +509,7 @@ QString XmlParser::convertCharsToXMLEntities(QString buf)
 						//The attribute is at right of the CDATA tag
 						(end >= 0 && attr_start > end && attr_end > end)))
 				{
-					// Calculates the initial position where the value to be retrived is (in that case rigth after attrib=")
+					// Calculates the initial position where the value to be  retrived is (in that case rigth after attrib=")
 					pos = attr_start + attr_regexp.matchedLength();
 					count = attr_end - pos;
 					value = lin.mid(pos, count);

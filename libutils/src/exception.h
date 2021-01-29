@@ -189,7 +189,6 @@ enum class ErrorCode: unsigned {
 	InvConstratintNoColumns,
 	ConfigurationNotLoaded,
 	DefaultConfigNotRestored,
-	ExportFailure,
 	PluginNotLoaded,
 	PluginsNotLoaded,
 	InvalidSyntax,
@@ -297,12 +296,15 @@ enum class ErrorCode: unsigned {
 	InvDataDictDirectory,
 	InitialUserConfigNotCreated,
 	InvalidObjectFilter,
-	InvChildObjectTypeFilter
+	InvChildObjectTypeFilter,
+	InvChangelogEntryValues,
+	InvProcedureParamOutMode,
+	ExportFailureDbSQLDisabled
 };
 
 class Exception {
 	private:
-		static constexpr unsigned ErrorCount=253;
+		static constexpr unsigned ErrorCount=255;
 
 		/*! \brief Stores other exceptions before raise the 'this' exception.
 		 This structure can be used to simulate a stack trace to improve the debug */
@@ -345,12 +347,12 @@ class Exception {
 		static unsigned constexpr MaximumStackSize = 50;
 
 		Exception();
-		Exception(const QString &msg, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info=QString());
-		Exception(const QString &msg, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info=QString());
-		Exception(const QString &msg, ErrorCode error_code, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info=QString());
-		Exception(const QString &msg, ErrorCode error_code, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info=QString());
-		Exception(ErrorCode error_code, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info=QString());
-		Exception(ErrorCode error_code, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info=QString());
+		Exception(const QString &msg, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info="");
+		Exception(const QString &msg, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info="");
+		Exception(const QString &msg, ErrorCode error_code, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info="");
+		Exception(const QString &msg, ErrorCode error_code, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info="");
+		Exception(ErrorCode error_code, const QString &method, const QString &file, int line, Exception *exception=nullptr, const QString &extra_info="");
+		Exception(ErrorCode error_code, const QString &method, const QString &file, int line, vector<Exception> &exceptions, const QString &extra_info="");
 
 		~Exception(void){}
 		QString getErrorMessage();

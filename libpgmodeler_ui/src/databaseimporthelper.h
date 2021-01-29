@@ -133,6 +133,7 @@ class DatabaseImportHelper: public QObject {
 		
 		SchemaParser schparser;
 		
+		void configureBaseFunctionAttribs(attribs_map &attribs);
 		void configureDatabase(attribs_map &attribs);
 		void createObject(attribs_map &attribs);
 		void createTablespace(attribs_map &attribs);
@@ -164,6 +165,8 @@ class DatabaseImportHelper: public QObject {
 		void createForeignServer(attribs_map &attribs);
 		void createUserMapping(attribs_map &attribs);
 		void createForeignTable(attribs_map &attribs);
+		void createTransform(attribs_map &attribs);
+		void createProcedure(attribs_map &attribs);
 		void __createTableInheritances();
 		void createTableInheritances();
 		void createTablePartitionings();
@@ -179,6 +182,11 @@ class DatabaseImportHelper: public QObject {
 		/*! \brief Retrieve the schema qualified name for the specified object oid. If the oid represents a function
 		or operator the signature can be retrieved instead by using the boolean parameter */
 		QString getObjectName(const QString &oid, bool signature_form=false);
+
+		/*! \brief Retrieve the object's attributes using its oid as search key.
+		This method will check if the oid resides in the user_objs or system_objs map and return a copy of it.
+		If the oid is invalid an empty attributes map is returned. */
+		attribs_map getObjectAttributes(unsigned oid);
 		
 		//! \brief Get the names for the objects oids inside the oid vector.
 		QStringList getObjectNames(const QString &oid_vect, bool signature_form=false);
@@ -253,7 +261,7 @@ class DatabaseImportHelper: public QObject {
 				\note: The database used as reference is the same as the currently connection. So,
 				if the user want a different database it must call Connection::switchToDatabase() method
 				before assign the connection to this class. */
-		attribs_map getObjects(ObjectType obj_type, const QString &schema=QString(), const QString &table=QString(), attribs_map extra_attribs=attribs_map());
+		attribs_map getObjects(ObjectType obj_type, const QString &schema="", const QString &table="", attribs_map extra_attribs=attribs_map());
 		
 		/*! \brief Retuns a vector of attribute maps that contains the name, OID and object type of each retrieved object.
 				This method receives a list of object types to be retrieved and the catalog query is constructed and joint through UNION operator
@@ -263,7 +271,7 @@ class DatabaseImportHelper: public QObject {
 				\note: The database used as reference is the same as the currently connection. So,
 				if the user want a different database it must call Connection::switchToDatabase() method
 				before assign the connection to this class. */
-		vector<attribs_map> getObjects(vector<ObjectType> obj_type, const QString &schema=QString(), const QString &table=QString(), attribs_map extra_attribs=attribs_map());
+		vector<attribs_map> getObjects(vector<ObjectType> obj_type, const QString &schema="", const QString &table="", attribs_map extra_attribs=attribs_map());
 
 		void retrieveSystemObjects();
 		void retrieveUserObjects();
@@ -275,7 +283,7 @@ class DatabaseImportHelper: public QObject {
 		void updateFKRelationships();
 		
 		//! \brief Returns the currently configured object filters in the internal catalog instance
-		map<ObjectType, QStringList> getObjectFilters();
+		map<ObjectType, QString> getObjectFilters();
 
 	signals:
 		//! \brief This singal is emitted whenever the export progress changes
@@ -295,7 +303,7 @@ class DatabaseImportHelper: public QObject {
 		
 	public slots:
 		void importDatabase();
-		void setObjectFilters(QStringList filter, bool only_matching, QStringList force_tab_obj_types = {});
+		void setObjectFilters(QStringList filter, bool only_matching, bool match_signature, QStringList force_tab_obj_types = {});
 		
 		friend class DatabaseImportForm;
 		friend class ModelDatabaseDiffForm;

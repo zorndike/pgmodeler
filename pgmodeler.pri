@@ -1,13 +1,4 @@
 # This file contains the main variables settings to build pgModeler on all supported platforms.
-#
-# Thanks to Lisandro Damián Nicanor Pérez Meyer, pgModeler is able to be package in most of
-# Linux distros.
-#
-# Original version by: Lisandro Damián Nicanor Pérez Meyer <perezmeyer@gmail.com>
-# Original code: https://github.com/perezmeyer/pgmodeler/tree/shared_libs
-#
-# Refactored version by: Raphal Araújo e Silva <raphael@pgmodeler.com.br>
-# Refactored code: https://github.com/pgmodeler/pgmodeler
 
 # General Qt settings
 QT += core widgets printsupport network svg
@@ -28,10 +19,10 @@ defined(NO_UPDATE_CHECK, var): DEFINES+=NO_UPDATE_CHECK
 
 # Properly defining build number constant
 unix {
- BUILDNUM=$$system("date '+%Y%m%d'")
+ BUILDNUM=$$system("$$PWD/getbuildnum.sh")
  DEFINES+=BUILDNUM=\\\"$${BUILDNUM}\\\"
 } else {
- BUILDNUM=$$system('wingetdate.bat')
+ BUILDNUM=$$system("$$PWD/getbuildnum.bat")
  DEFINES+=BUILDNUM=\\\"$${BUILDNUM}\\\"
 }
 
@@ -62,7 +53,7 @@ linux {
 	!defined(PREFIX, var): PREFIX = /usr/local/pgmodeler-appimage
 	BINDIR = $$PREFIX
 	PRIVATEBINDIR = $$PREFIX
-	PRIVATELIBDIR = $$PREFIX
+	PRIVATELIBDIR = $$PREFIX/lib
 	PLUGINSDIR = $$PREFIX/lib/pgmodeler/plugins
 	SHAREDIR = $$PREFIX
 	CONFDIR = $$SHAREDIR/conf
@@ -167,10 +158,10 @@ unix:!macx {
 }
 
 macx {
-  PGSQL_LIB = /Library/PostgreSQL/11/lib/libpq.dylib
-  PGSQL_INC = /Library/PostgreSQL/11/include
-  XML_INC = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libxml2
-  XML_LIB = /usr/lib/libxml2.dylib
+  !defined(PGSQL_LIB, var): PGSQL_LIB = /Library/PostgreSQL/12/lib/libpq.dylib
+  !defined(PGSQL_INC, var): PGSQL_INC = /Library/PostgreSQL/12/include
+  !defined(XML_INC, var): XML_INC = /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/libxml2
+  !defined(XML_LIB, var): XML_LIB = /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libxml2.tbd
   INCLUDEPATH += $$PGSQL_INC $$XML_INC
 }
 

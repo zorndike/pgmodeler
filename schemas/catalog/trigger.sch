@@ -3,13 +3,20 @@
 #          Code generation can be broken if incorrect changes are made.
 
 %if {list} %then
-  [SELECT tg.oid, tgname AS name, tb.oid::regclass::text AS parent, 'table' AS parent_type
+
+    %set {parent-name} [ ns.nspname || '.' || tb.relname ]
+
+    %if {use-signature} %then
+        %set {signature} {parent-name} [ || '.' || ]
+    %end
+
+ [SELECT tg.oid, tgname AS name, ] {parent-name} [ AS parent, 'table' AS parent_type
     FROM pg_trigger AS tg
-    LEFT JOIN pg_class AS tb ON tg.tgrelid = tb.oid AND relkind IN ('r','v','m','f') ]
+    LEFT JOIN pg_class AS tb ON tg.tgrelid = tb.oid AND relkind IN ('r','v','m','f') 
+    LEFT JOIN pg_namespace AS ns ON ns.oid = tb.relnamespace ]
 
   %if {schema} %then
-    [  LEFT JOIN pg_namespace AS ns ON ns.oid = tb.relnamespace
-       WHERE ns.nspname= ] '{schema}'
+    [  WHERE ns.nspname= ] '{schema}'
 
     %if {table} %then
      [ AND tb.relname=]'{table}'
@@ -31,8 +38,12 @@
   %end
   
   %if {name-filter} %then
-    [ AND ] ( {name-filter} )
+    [ AND ] ( {signature} [ tgname ~* ] E'{name-filter}' )
   %end
+  
+  %if {extra-condition} %then
+    [ AND ] ( {extra-condition} )
+  %end  
   
 %else
     %if {attribs} %then
@@ -54,7 +65,7 @@
         END AS table_type, 
 
 	#Convert the arguments from bytea to a string array. The last element is always empty and can be discarded
-	string_to_array(encode(tg.tgargs,'escape'), E'\\000') AS arguments,
+	encode(tg.tgargs,'escape') AS arguments,
 
 	       it.action_condition AS condition,
 	       (B'0000001'::integer & tgtype = 1) AS per_line_bool,

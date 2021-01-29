@@ -18,10 +18,15 @@
 
 #include <QtTest/QtTest>
 #include "databasemodel.h"
+#include "qtcompat/qtextstreamcompat.h"
+#include "pgmodelerunittest.h"
 
-class DatabaseModelTest: public QObject {
+class DatabaseModelTest: public QObject, public PgModelerUnitTest {
 	private:
 		Q_OBJECT
+
+	public:
+		DatabaseModelTest() : PgModelerUnitTest(SCHEMASDIR){}
 
 	private slots:
 		void saveObjectsMetadata();
@@ -45,7 +50,7 @@ void DatabaseModelTest::saveObjectsMetadata()
 	}
 	catch (Exception &e)
 	{
-		out << e.getExceptionsText() << endl;
+		out << e.getExceptionsText() << QtCompat::endl;
 	}
 
 	QCOMPARE(QFileInfo(output).exists(), true);
@@ -69,7 +74,7 @@ void DatabaseModelTest::loadObjectsMetadata()
 	}
 	catch (Exception &e)
 	{
-		out << e.getExceptionsText() << endl;
+		out << e.getExceptionsText() << QtCompat::endl;
 		QCOMPARE(false, true);
 	}
 }

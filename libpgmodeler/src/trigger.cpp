@@ -17,6 +17,7 @@
 */
 
 #include "trigger.h"
+#include "pgmodelerns.h"
 
 Trigger::Trigger()
 {
@@ -32,49 +33,51 @@ Trigger::Trigger()
 	for(i=0; i < 4; i++)
 		events[tipos[i]]=false;
 
-	attributes[Attributes::Arguments]=QString();
-	attributes[Attributes::Events]=QString();
-	attributes[Attributes::TriggerFunc]=QString();
-	attributes[Attributes::Table]=QString();
-	attributes[Attributes::Columns]=QString();
-	attributes[Attributes::FiringType]=QString();
-	attributes[Attributes::PerRow]=QString();
-	attributes[Attributes::InsEvent]=QString();
-	attributes[Attributes::DelEvent]=QString();
-	attributes[Attributes::UpdEvent]=QString();
-	attributes[Attributes::TruncEvent]=QString();
-	attributes[Attributes::Condition]=QString();
-	attributes[Attributes::RefTable]=QString();
-	attributes[Attributes::DeferType]=QString();
-	attributes[Attributes::Deferrable]=QString();
-	attributes[Attributes::DeclInTable]=QString();
-	attributes[Attributes::Constraint]=QString();
-	attributes[Attributes::OldTableName]=QString();
-	attributes[Attributes::NewTableName]=QString();
+	attributes[Attributes::Arguments]="";
+	attributes[Attributes::Events]="";
+	attributes[Attributes::TriggerFunc]="";
+	attributes[Attributes::Table]="";
+	attributes[Attributes::Columns]="";
+	attributes[Attributes::FiringType]="";
+	attributes[Attributes::PerRow]="";
+	attributes[Attributes::InsEvent]="";
+	attributes[Attributes::DelEvent]="";
+	attributes[Attributes::UpdEvent]="";
+	attributes[Attributes::TruncEvent]="";
+	attributes[Attributes::Condition]="";
+	attributes[Attributes::RefTable]="";
+	attributes[Attributes::DeferType]="";
+	attributes[Attributes::Deferrable]="";
+	attributes[Attributes::DeclInTable]="";
+	attributes[Attributes::Constraint]="";
+	attributes[Attributes::OldTableName]="";
+	attributes[Attributes::NewTableName]="";
 }
 
 void Trigger::addArgument(const QString &arg)
 {
-	arguments.push_back(arg);
+	arguments.append(arg);
+}
+
+void Trigger::addArguments(const QStringList &args)
+{
+	arguments.clear();
+	arguments = args;
 }
 
 void Trigger::setArgumentAttribute(unsigned def_type)
 {
-	QString str_args;
-	unsigned i, count;
+	QStringList str_args;
 
-	count=arguments.size();
-	for(i=0; i < count; i++)
+	for(auto &arg : arguments)
 	{
 		if(def_type==SchemaParser::SqlDefinition)
-			str_args+=QString("'") + arguments[i] + QString("'");
+			str_args.append(QString("'") + arg + QString("'"));
 		else
-			str_args+=arguments[i];
-
-		if(i < (count-1)) str_args+=QString(",");
+			str_args.append(arg);
 	}
 
-	attributes[Attributes::Arguments]=str_args;
+	attributes[Attributes::Arguments] = str_args.join(def_type == SchemaParser::SqlDefinition ? "," : PgModelerNs::DataSeparator);
 }
 
 void Trigger::setFiringType(FiringType firing_type)
@@ -149,14 +152,10 @@ void Trigger::addColumn(Column *column)
 void Trigger::editArgument(unsigned arg_idx, const QString &new_arg)
 {
 	//Raises an error if the argument index is invalid (out of bound)
-	if(arg_idx>=arguments.size())
+	if(static_cast<int>(arg_idx) >= arguments.size())
 		throw Exception(ErrorCode::RefArgumentInvalidIndex,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 
-	vector<QString>::iterator itr;
-
-	itr=arguments.begin()+arg_idx;
-	(*itr)=new_arg;
-
+	arguments[arg_idx] = new_arg;
 	setCodeInvalidated(true);
 }
 
@@ -182,7 +181,7 @@ bool Trigger::isExecutePerRow()
 QString Trigger::getArgument(unsigned arg_idx)
 {
 	//Raises an error if the argument index is invalid (out of bound)
-	if(arg_idx>=arguments.size())
+	if(static_cast<int>(arg_idx) >= arguments.size())
 		throw Exception(ErrorCode::RefArgumentInvalidIndex,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 
 	return arguments[arg_idx];
@@ -225,12 +224,10 @@ FiringType Trigger::getFiringType()
 void Trigger::removeArgument(unsigned arg_idx)
 {
 	//Raises an error if the argument index is invalid (out of bound)
-	if(arg_idx>=arguments.size())
+	if(static_cast<int>(arg_idx) >= arguments.size())
 		throw Exception(ErrorCode::RefArgumentInvalidIndex,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 
-	vector<QString>::iterator itr;
-	itr=arguments.begin()+arg_idx;
-	arguments.erase(itr);
+	arguments.removeAt(arg_idx);
 	setCodeInvalidated(true);
 }
 
@@ -365,7 +362,7 @@ void Trigger::setBasicAttributes(unsigned def_type)
 			if(event_types[i]==EventType::OnUpdate)
 			{
 				count=upd_columns.size();
-				attributes[Attributes::Columns]=QString();
+				attributes[Attributes::Columns]="";
 
 				for(i1=0; i1 < count; i1++)
 				{
@@ -408,18 +405,18 @@ QString Trigger::getCodeDefinition(unsigned def_type)
 	if(getParentTable())
 		attributes[Attributes::Table]=getParentTable()->getName(true);
 
-	attributes[Attributes::Constraint]=(is_constraint ? Attributes::True : QString());
+	attributes[Attributes::Constraint]=(is_constraint ? Attributes::True : "");
 	attributes[Attributes::FiringType]=(~firing_type);
 
 	//** Constraint trigger MUST execute per row **
-	attributes[Attributes::PerRow]=((is_exec_per_row && !is_constraint) || is_constraint ? Attributes::True : QString());
+	attributes[Attributes::PerRow]=((is_exec_per_row && !is_constraint) || is_constraint ? Attributes::True : "");
 
 	attributes[Attributes::Condition]=condition;
 
 	if(referenced_table)
 		attributes[Attributes::RefTable]=referenced_table->getName(true);
 
-	attributes[Attributes::Deferrable]=(is_deferrable ? Attributes::True : QString());
+	attributes[Attributes::Deferrable]=(is_deferrable ? Attributes::True : "");
 	attributes[Attributes::DeferType]=(~deferral_type);
 
 	if(def_type == SchemaParser::XmlDefinition)

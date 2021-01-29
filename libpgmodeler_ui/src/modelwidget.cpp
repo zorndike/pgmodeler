@@ -61,6 +61,8 @@
 #include "foreigndatawrapperwidget.h"
 #include "foreignserverwidget.h"
 #include "usermappingwidget.h"
+#include "transformwidget.h"
+#include "procedurewidget.h"
 
 vector<BaseObject *> ModelWidget::copied_objects;
 vector<BaseObject *> ModelWidget::cutted_objects;
@@ -279,6 +281,7 @@ ModelWidget::ModelWidget(QWidget *parent) : QWidget(parent)
 
 	action_sel_sch_children=new QAction(QIcon(PgModelerUiNs::getIconPath("seltodos")), tr("Select children"), this);
 	action_sel_tagged_tabs=new QAction(QIcon(PgModelerUiNs::getIconPath("seltodos")), tr("Select tagged"), this);
+	action_sel_table_rels=new QAction(QIcon(PgModelerUiNs::getIconPath("seltodos")), tr("Select relationships"), this);
 
 	action_select_object=new QAction(QIcon(PgModelerUiNs::getIconPath("movimentado")), tr("Select"), this);
 	action_parent_rel=new QAction(QIcon(PgModelerUiNs::getIconPath("relationship")), tr("Open relationship"), this);
@@ -338,14 +341,29 @@ ModelWidget::ModelWidget(QWidget *parent) : QWidget(parent)
 	action_fade_in=new QAction(QIcon(PgModelerUiNs::getIconPath("fadein")), tr("Fade in"), this);
 	action_fade_out=new QAction(QIcon(PgModelerUiNs::getIconPath("fadeout")), tr("Fade out"), this);
 
+	action_fade_rels=new QAction(QIcon(PgModelerUiNs::getIconPath("relationship_grp")), tr("Relationships"), this);
 	action_fade_rels_in=new QAction(QIcon(PgModelerUiNs::getIconPath("fadein")), tr("Fade in"), this);
 	action_fade_rels_out=new QAction(QIcon(PgModelerUiNs::getIconPath("fadeout")), tr("Fade out"), this);
 
+	action_fade_peer_tables = new QAction(QIcon(PgModelerUiNs::getIconPath("table_grp")), tr("Peer tables"), this);
+	action_fade_peer_tables_in = new QAction(QIcon(PgModelerUiNs::getIconPath("fadein")), tr("Fade in"), this);
+	action_fade_peer_tables_out = new QAction(QIcon(PgModelerUiNs::getIconPath("fadeout")), tr("Fade out"), this);
+
+	action_fade_both_objs = new QAction(tr("Both"), this);
+	action_fade_both_objs_in = new QAction(QIcon(PgModelerUiNs::getIconPath("fadein")), tr("Fade in"), this);
+	action_fade_both_objs_out = new QAction(QIcon(PgModelerUiNs::getIconPath("fadeout")), tr("Fade out"), this);
+
 	fade_rels_menu.addAction(action_fade_rels_in);
 	fade_rels_menu.addAction(action_fade_rels_out);
-
-	action_fade_rels=new QAction(QIcon(PgModelerUiNs::getIconPath("relationship_grp")), tr("Relationships"), this);
 	action_fade_rels->setMenu(&fade_rels_menu);
+
+	fade_peer_tables_menu.addAction(action_fade_peer_tables_in);
+	fade_peer_tables_menu.addAction(action_fade_peer_tables_out);
+	action_fade_peer_tables->setMenu(&fade_peer_tables_menu);
+
+	fade_both_objs_menu.addAction(action_fade_both_objs_in);
+	fade_both_objs_menu.addAction(action_fade_both_objs_out);
+	action_fade_both_objs->setMenu(&fade_both_objs_menu);
 
 	action_fade->setMenu(&fade_menu);
 	action_fade_in->setMenu(&fade_in_menu);
@@ -422,6 +440,7 @@ ModelWidget::ModelWidget(QWidget *parent) : QWidget(parent)
 	new_obj_overlay_wgt=new NewObjectOverlayWidget(this);
 	new_obj_overlay_wgt->setObjectName(QString("new_obj_overlay_wgt"));
 	new_obj_overlay_wgt->setVisible(false);
+	PgModelerUiNs::createDropShadow(new_obj_overlay_wgt, 5, 5, 20);
 
 	vector<ObjectType> graph_types = { ObjectType::BaseObject, ObjectType::Schema, ObjectType::Table, ObjectType::ForeignTable,
 																		 ObjectType::View, ObjectType::Relationship, ObjectType::Textbox };
@@ -475,6 +494,7 @@ ModelWidget::ModelWidget(QWidget *parent) : QWidget(parent)
 	connect(action_rename, SIGNAL(triggered(bool)), this, SLOT(renameObjects()));
 	connect(action_edit_perms, SIGNAL(triggered(bool)), this, SLOT(editPermissions()));
 	connect(action_sel_sch_children, SIGNAL(triggered(bool)), this, SLOT(selectSchemaChildren()));
+	connect(action_sel_table_rels, SIGNAL(triggered(bool)), this, SLOT(selectTableRelationships()));
 	connect(action_sel_tagged_tabs, SIGNAL(triggered(bool)), this, SLOT(selectTaggedTables()));
 	connect(action_select_object, SIGNAL(triggered(bool)), this, SLOT(highlightObject()));
 	connect(action_parent_rel, SIGNAL(triggered(bool)), this, SLOT(editObject()));
@@ -490,6 +510,10 @@ ModelWidget::ModelWidget(QWidget *parent) : QWidget(parent)
 	connect(action_fade_out, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsOut()));
 	connect(action_fade_rels_in, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsIn()));
 	connect(action_fade_rels_out, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsOut()));
+	connect(action_fade_peer_tables_in, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsIn()));
+	connect(action_fade_peer_tables_out, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsOut()));
+	connect(action_fade_both_objs_in, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsIn()));
+	connect(action_fade_both_objs_out, SIGNAL(triggered(bool)), this, SLOT(fadeObjectsOut()));
 	connect(action_collapse_ext_attribs, SIGNAL(triggered(bool)), this, SLOT(setCollapseMode()));
 	connect(action_collpase_all_attribs, SIGNAL(triggered(bool)), this, SLOT(setCollapseMode()));
 	connect(action_no_collapse_attribs, SIGNAL(triggered(bool)), this, SLOT(setCollapseMode()));
@@ -1898,7 +1922,7 @@ int ModelWidget::openEditingForm(QWidget *widget, unsigned button_conf)
 		editing_form.setMainWidget(base_obj_wgt);
 
 		if(rel)
-			class_name.prepend(rel->getRelationshipTypeName().replace(QRegExp("( )+|(\\-)+"), QString()));
+			class_name.prepend(rel->getRelationshipTypeName().replace(QRegExp("( )+|(\\-)+"), ""));
 	}
 	else
 		editing_form.setMainWidget(widget);
@@ -2098,6 +2122,10 @@ void ModelWidget::showObjectForm(ObjectType obj_type, BaseObject *object, BaseOb
 			res = openEditingForm<ForeignServer, ForeignServerWidget>(object);
 		else if(obj_type==ObjectType::UserMapping)
 			res = openEditingForm<UserMapping, UserMappingWidget>(object);
+		else if(obj_type==ObjectType::Transform)
+			res = openEditingForm<Transform, TransformWidget>(object);
+		else if(obj_type==ObjectType::Procedure)
+			res=openEditingForm<Procedure, ProcedureWidget, Schema>(object, sel_schema);
 		else
 		{
 			DatabaseWidget *database_wgt=new DatabaseWidget;
@@ -2263,6 +2291,10 @@ void ModelWidget::moveToLayer()
 	for(auto &obj : selected_objects)
 	{
 		graph_obj = dynamic_cast<BaseGraphicObject *>(obj);
+
+		if(!graph_obj)
+			continue;
+
 		graph_obj->setLayer(layer_id);
 	}
 
@@ -2389,6 +2421,7 @@ void ModelWidget::selectSchemaChildren()
 {
 	QObject *obj_sender=dynamic_cast<QAction *>(sender());
 	Schema *schema=nullptr;
+	SchemaView *sch_view = nullptr;
 
 	schema=dynamic_cast<Schema *>(
 				 reinterpret_cast<BaseObject *>(
@@ -2396,8 +2429,26 @@ void ModelWidget::selectSchemaChildren()
 
 	scene->clearSelection();
 
-	dynamic_cast<SchemaView *>(
-				dynamic_cast<BaseObjectView *>(schema->getOverlyingObject()))->selectChildren();
+	sch_view = 	dynamic_cast<SchemaView *>(
+				dynamic_cast<BaseObjectView *>(schema->getOverlyingObject()));
+
+	if(sch_view)
+		sch_view->selectChildren();
+}
+
+void ModelWidget::selectTableRelationships()
+{
+	QObject *obj_sender=dynamic_cast<QAction *>(sender());
+	BaseTable *table=nullptr;
+
+	table=dynamic_cast<BaseTable *>(
+				 reinterpret_cast<BaseObject *>(
+					 dynamic_cast<QAction *>(obj_sender)->data().value<void *>()));
+
+	scene->clearSelection();
+
+	dynamic_cast<BaseTableView *>(
+				dynamic_cast<BaseObjectView *>(table->getOverlyingObject()))->selectRelationships();
 }
 
 void ModelWidget::selectTaggedTables()
@@ -2941,7 +2992,7 @@ void ModelWidget::pasteObjects(bool duplicate_mode)
 	{
 		Messagebox msg_box;
 		msg_box.show(Exception(tr("Not all objects were pasted to the model due to errors returned during the process! Refer to error stack for more details!"),
-								 ErrorCode::Custom,__PRETTY_FUNCTION__,__FILE__,__LINE__, errors), QString(),
+								 ErrorCode::Custom,__PRETTY_FUNCTION__,__FILE__,__LINE__, errors), "",
 								 Messagebox::AlertIcon);
 	}
 
@@ -3057,6 +3108,8 @@ void ModelWidget::duplicateObject()
 			copyObjects(true);
 			pasteObjects(true);
 		}
+
+		selected_objects.clear();
 	}
 	catch(Exception &e)
 	{
@@ -3157,7 +3210,7 @@ void ModelWidget::removeObjects(bool cascade)
 									(!tab_obj || (tab_obj && !tab_obj->isAddedByRelationship())))
 							{
 								parent_type=(tab_obj ? tab_obj->getParentTable()->getObjectType() : ObjectType::Database);
-								parent_name=(tab_obj ? tab_obj->getParentTable()->getName(true) : QString());
+								parent_name=(tab_obj ? tab_obj->getParentTable()->getName(true) : "");
 								obj_name=(tab_obj ? tab_obj->getName() : ref_obj->getSignature());
 
 								objs_map[ref_obj->getObjectId()]=std::make_tuple(ref_obj,
@@ -3203,7 +3256,7 @@ void ModelWidget::removeObjects(bool cascade)
 						tab_obj=dynamic_cast<TableObject *>(object);
 						obj_name=(tab_obj ? object->getName(true) : object->getSignature());
 
-						parent_name=(tab_obj ? tab_obj->getParentTable()->getName(true) : QString());
+						parent_name=(tab_obj ? tab_obj->getParentTable()->getName(true) : "");
 						parent_type=(tab_obj ? tab_obj->getParentTable()->getObjectType() : ObjectType::Database);
 
 						objs_map[object->getObjectId()]=std::make_tuple(object,
@@ -3285,9 +3338,8 @@ void ModelWidget::removeObjects(bool cascade)
 									db_model->validateColumnRemoval(dynamic_cast<Column *>(tab_obj));
 
 								//Register the removed object on the operation list
-								table->removeObject(obj_idx, obj_type);
 								op_list->registerObject(tab_obj, Operation::ObjectRemoved, obj_idx, table);
-
+								table->removeObject(obj_idx, obj_type);
 								db_model->removePermissions(tab_obj);
 
 								aux_table=dynamic_cast<Table *>(table);
@@ -3676,8 +3728,8 @@ void ModelWidget::configureFadeMenu()
 		if(is_db_selected)
 		{
 			QAction *action = nullptr;
-			vector<ObjectType> types = { ObjectType::Schema, ObjectType::Table, ObjectType::View, ObjectType::Relationship, ObjectType::Textbox };
-			QStringList labels = { tr("Schemas"), tr("Tables"), tr("Views"), tr("Relationships"), tr("Textboxes") };
+			vector<ObjectType> types = { ObjectType::Schema, ObjectType::Table, ObjectType::ForeignTable, ObjectType::View, ObjectType::Relationship, ObjectType::Textbox };
+			QStringList labels = { tr("Schemas"), tr("Tables"), tr("Foreign tables"), tr("Views"), tr("Relationships"), tr("Textboxes") };
 			unsigned id = 0;
 
 			for(ObjectType type : types)
@@ -3744,10 +3796,12 @@ void ModelWidget::configureFadeMenu()
 				}
 			}
 
-			if(obj_type == ObjectType::Table || obj_type == ObjectType::View)
+			if(BaseTable::isBaseTable(obj_type))
 			{
+				fade_menu.addSeparator();
 				fade_menu.addAction(action_fade_rels);
-				action_fade_rels->setText(tr("Table && Relationships"));
+				fade_menu.addAction(action_fade_peer_tables);
+				fade_menu.addAction(action_fade_both_objs);
 			}
 		}
 	}
@@ -3829,16 +3883,25 @@ void ModelWidget::fadeObjects(QAction *action, bool fade_in)
 			db_model->getObjectReferences(selected_objects[0], list);
 		else
 		{
-			if(action == action_fade_rels_in || action == action_fade_rels_out)
+			bool fade_rels = action == action_fade_rels_in || action == action_fade_rels_out,
+					fade_peer_tabs = action == action_fade_peer_tables_in || action == action_fade_peer_tables_out,
+					fade_both_objs = action == action_fade_both_objs_in || action == action_fade_both_objs_out;
+
+			if(fade_rels || fade_peer_tabs || fade_both_objs)
 			{
 				//Applying fade to the relationships linked to the selected table/view
 				vector<BaseRelationship *> rel_list = db_model->getRelationships(dynamic_cast<BaseTable *>(selected_objects[0]));
 
 				for(auto rel : rel_list)
 				{
-					list.push_back(rel);
-					list.push_back(rel->getTable(BaseRelationship::SrcTable));
-					list.push_back(rel->getTable(BaseRelationship::DstTable));
+					if(fade_rels || fade_both_objs)
+						list.push_back(rel);
+
+					if(fade_peer_tabs || fade_both_objs)
+					{
+						list.push_back(rel->getTable(BaseRelationship::SrcTable));
+						list.push_back(rel->getTable(BaseRelationship::DstTable));
+					}
 				}
 
 				vector<BaseObject *>::iterator end;
@@ -4183,6 +4246,9 @@ void ModelWidget::configureBasicActions(BaseObject *obj)
 
 			action_new_object->setMenu(&new_object_menu);
 			popup_menu.insertAction(action_quick_actions, action_new_object);
+
+			popup_menu.addAction(action_sel_table_rels);
+			action_sel_table_rels->setData(QVariant::fromValue<void *>(obj));
 		}
 		else if(obj_type==ObjectType::Relationship || obj_type==ObjectType::BaseRelationship)
 		{
@@ -4562,7 +4628,7 @@ void ModelWidget::highlightObject()
 
 void ModelWidget::toggleNewObjectOverlay()
 {
-	if(new_obj_overlay_wgt->isHidden() &&
+if(new_obj_overlay_wgt->isHidden() &&
 			(selected_objects.empty() || selected_objects[0]->getObjectType()!=ObjectType::BaseRelationship))
 	{
 		new_obj_overlay_wgt->raise();
@@ -4666,7 +4732,7 @@ void ModelWidget::convertIntegerToSerial()
 			serial_tp=QString("bigserial");
 
 		col->setType(PgSqlType(serial_tp));
-		col->setDefaultValue(QString());
+		col->setDefaultValue("");
 
 		//Revalidate the relationships since the modified column can be a primary key
 		if(tab->getPrimaryKey()->isColumnReferenced(col))
@@ -4930,7 +4996,8 @@ void ModelWidget::swapObjectsIds()
 		swap_ids_wgt->setSelectedObjects(selected_objects[0], selected_objects.size() == 2 ? selected_objects[1] : nullptr);
 
 	connect(swap_ids_wgt, &SwapObjectsIdsWidget::s_objectsIdsSwapped, [&](){
-			this->op_list->removeOperations();
+			op_list->removeOperations();
+			setModified(true);
 			emit s_objectManipulated();
 	});
 

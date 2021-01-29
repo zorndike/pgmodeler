@@ -205,17 +205,10 @@ void DataManipulationForm::setAttributes(Connection conn, const QString curr_sch
 {
 	try
 	{
-		QString db_name;
-
 		tmpl_conn_params=conn.getConnectionParams();
-		db_name=QString("<strong>%1</strong>@<em>%2:%3</em>").arg(conn.getConnectionParam(Connection::ParamDbName))
-				.arg(conn.getConnectionParam(Connection::ParamServerIp).isEmpty() ?
-						 conn.getConnectionParam(Connection::ParamServerFqdn) : conn.getConnectionParam(Connection::ParamServerIp))
-				.arg(conn.getConnectionParam(Connection::ParamPort));
 
-		db_name_lbl->setText(db_name);
-		db_name.remove(QRegExp("<(/)?(strong|em)>"));
-		this->setWindowTitle(this->windowTitle() + QString(" - ") + db_name);
+		this->setWindowTitle(this->windowTitle() + QString(" - ") + conn.getConnectionId(true, true));
+		db_name_lbl->setText(conn.getConnectionId(true, true, true));
 
 		schema_cmb->clear();
 		listObjects(schema_cmb, { ObjectType::Schema });
@@ -859,7 +852,7 @@ void DataManipulationForm::retrieveFKColumns(const QString &schema, const QStrin
 
 		//Retrieving the constraints from catalog using a custom filter to select only foreign keys (contype=f)
 		fks=catalog.getObjectsAttributes(ObjectType::Constraint, schema, table, {}, {{Attributes::CustomFilter, QString("contype='f'")}});
-		ref_fks=catalog.getObjectsAttributes(ObjectType::Constraint, QString(), QString(), {}, {{Attributes::CustomFilter, QString("contype='f' AND cs.confrelid=%1").arg(table_oid)}});
+		ref_fks=catalog.getObjectsAttributes(ObjectType::Constraint, "", "", {}, {{Attributes::CustomFilter, QString("contype='f' AND cs.confrelid=%1").arg(table_oid)}});
 
 		if(!fks.empty() || !ref_fks.empty())
 		{
@@ -903,7 +896,7 @@ void DataManipulationForm::retrieveFKColumns(const QString &schema, const QStrin
 				for(auto &col : catalog.getObjectsAttributes(ObjectType::Column, schema, table, col_ids))
 					name_list.push_back(BaseObject::formatName(col[Attributes::Name]));
 
-				fk_infos[fk_name][Attributes::SrcColumns] = name_list.join(Table::DataSeparator);
+				fk_infos[fk_name][Attributes::SrcColumns] = name_list.join(PgModelerNs::DataSeparator);
 
 				col_ids.clear();
 				name_list.clear();
@@ -915,7 +908,7 @@ void DataManipulationForm::retrieveFKColumns(const QString &schema, const QStrin
 				for(auto &col : catalog.getObjectsAttributes(ObjectType::Column, aux_schema[Attributes::Name], aux_table[Attributes::Name], col_ids))
 					name_list.push_back(BaseObject::formatName(col[Attributes::Name]));
 
-				fk_infos[fk_name][Attributes::DstColumns] = name_list.join(Table::DataSeparator);
+				fk_infos[fk_name][Attributes::DstColumns] = name_list.join(PgModelerNs::DataSeparator);
 			}
 
 			submenu = new QMenu(this);
@@ -949,7 +942,7 @@ void DataManipulationForm::retrieveFKColumns(const QString &schema, const QStrin
 																													.arg(fk[Attributes::Name]), this, SLOT(browseReferrerTable()));
 				action->setData(fk_name);
 
-				ref_fk_infos[fk_name][Attributes::SrcColumns] = name_list.join(Table::DataSeparator);
+				ref_fk_infos[fk_name][Attributes::SrcColumns] = name_list.join(PgModelerNs::DataSeparator);
 				ref_fk_infos[fk_name][Attributes::Table] = aux_table[Attributes::Name];
 				ref_fk_infos[fk_name][Attributes::Schema] = aux_schema[Attributes::Name];
 			}
@@ -1209,14 +1202,14 @@ void DataManipulationForm::browseTable(const QString &fk_name, bool browse_ref_t
 	if(browse_ref_tab)
 	{
 		src_cols =  pk_col_names;
-		ref_cols = ref_fk_infos[fk_name][Attributes::SrcColumns].split(Table::DataSeparator);
+		ref_cols = ref_fk_infos[fk_name][Attributes::SrcColumns].split(PgModelerNs::DataSeparator);
 		schema = ref_fk_infos[fk_name][Attributes::Schema];
 		table = ref_fk_infos[fk_name][Attributes::Table];
 	}
 	else
 	{
-		src_cols =  fk_infos[fk_name][Attributes::SrcColumns].split(Table::DataSeparator);
-		ref_cols = fk_infos[fk_name][Attributes::DstColumns].split(Table::DataSeparator);
+		src_cols =  fk_infos[fk_name][Attributes::SrcColumns].split(PgModelerNs::DataSeparator);
+		ref_cols = fk_infos[fk_name][Attributes::DstColumns].split(PgModelerNs::DataSeparator);
 		schema = fk_infos[fk_name][Attributes::Schema];
 		table = fk_infos[fk_name][Attributes::RefTable];
 	}
@@ -1391,7 +1384,7 @@ void DataManipulationForm::saveChanges()
 QString DataManipulationForm::getDMLCommand(int row)
 {
 	if(row < 0 || row >= results_tbw->rowCount())
-		return QString();
+		return "";
 
 	QString tab_name=QString("\"%1\".\"%2\"").arg(schema_cmb->currentText()).arg(table_cmb->currentText()),
 			upd_cmd=QString("UPDATE %1 SET %2 WHERE %3"),
@@ -1487,7 +1480,7 @@ QString DataManipulationForm::getDMLCommand(int row)
 		}
 
 		if(col_list.isEmpty())
-			return QString();
+			return "";
 		else
 		{
 			if(op_type==OpUpdate)
@@ -1580,7 +1573,7 @@ void DataManipulationForm::toggleColumnDisplay(QListWidgetItem *item)
 void DataManipulationForm::openNewWindow()
 {
 	DataManipulationForm *data_manip = new DataManipulationForm;
-	data_manip->setAttributes(tmpl_conn_params, QString());
+	data_manip->setAttributes(tmpl_conn_params, "");
 	data_manip->show();
 }
 

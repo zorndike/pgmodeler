@@ -35,7 +35,6 @@ class DatabaseExplorerWidget: public QWidget, public Ui::DatabaseExplorerWidget 
 		
 		static const QString DepNotDefined,
 		DepNotFound,
-		ElemSeparator,
 		DefaultSourceCode;
 		
 		//! \brief Stores the translations of all used attributes at properties panel
@@ -87,11 +86,11 @@ class DatabaseExplorerWidget: public QWidget, public Ui::DatabaseExplorerWidget 
 		
 		/*! \brief Returns the properly format object name by querying it using its OID and type.
 		Optional schema and table names can be specified to filter the results */
-		QString getObjectName(ObjectType obj_type, const QString &oid, const QString &sch_name=QString(), const QString tab_name=QString());
+		QString getObjectName(ObjectType obj_type, const QString &oid, const QString &sch_name="", const QString tab_name="");
 		
 		/*! \brief Returns the properly format list of object names by querying them using their OIDs and type.
 		Optional schema and table names can be specified to filter the results */
-		QStringList getObjectsNames(ObjectType obj_type, const QStringList &oids, const QString &sch_name=QString(), const QString tab_name=QString());
+		QStringList getObjectsNames(ObjectType obj_type, const QStringList &oids, const QString &sch_name="", const QString tab_name="");
 		
 		//! \brief Format the object's name based upon the passed attributes
 		QString formatObjectName(attribs_map &attribs);
@@ -133,6 +132,8 @@ class DatabaseExplorerWidget: public QWidget, public Ui::DatabaseExplorerWidget 
 		void formatServerAttribs(attribs_map &attribs);
 		void formatUserMappingAttribs(attribs_map &attribs);
 		void handleSelectedSnippet(const QString &snip_id);
+		void formatBaseFunctionAttribs(attribs_map &attribs);
+		void formatProcedureAttribs(attribs_map &attribs);
 		
 		//! \brief Extract an attribute map containing the basic attributes for drop/rename commands
 		attribs_map extractAttributesFromItem(QTreeWidgetItem *item);
@@ -181,7 +182,7 @@ class DatabaseExplorerWidget: public QWidget, public Ui::DatabaseExplorerWidget 
 		void cancelObjectRename();
 
 		//! \brief Show the widget to handle data in tables
-		void openDataGrid(const QString &schema=QString("public"), const QString &table=QString(), bool hide_views=true);
+		void openDataGrid(const QString &schema=QString("public"), const QString &table="", bool hide_views=true);
 
 		//! \brief Drop the database
 		void dropDatabase();

@@ -23,6 +23,7 @@
 #include "pgmodeleruins.h"
 #include "plaintextitemdelegate.h"
 #include "datamanipulationform.h"
+#include "qtcompat/qplaintexteditcompat.h"
 
 map<QString, QString> SQLExecutionWidget::cmd_history;
 
@@ -37,11 +38,7 @@ SQLExecutionWidget::SQLExecutionWidget(QWidget * parent) : QWidget(parent)
 	cmd_history_txt=PgModelerUiNs::createNumberedTextEditor(cmd_history_parent);
 	cmd_history_txt->setCustomContextMenuEnabled(false);
 
-	#if (QT_VERSION < QT_VERSION_CHECK(5, 14, 0))
-		cmd_history_txt->setTabStopWidth(sql_cmd_txt->getTabDistance());
-	#else
-		cmd_history_txt->setTabStopDistance(sql_cmd_txt->getTabDistance());
-	#endif
+	QtCompat::setTabStopDistance(cmd_history_txt, sql_cmd_txt->getTabDistance());
 
 	cmd_history_txt->setContextMenuPolicy(Qt::CustomContextMenu);
 	cmd_history_txt->setReadOnly(true);
@@ -217,12 +214,7 @@ void SQLExecutionWidget::setConnection(Connection conn)
 {
 	sql_exec_hlp.setConnection(conn);
 	sql_cmd_conn = conn;
-
-	db_name_lbl->setText(QString("<strong>%1</strong>@<em>%2:%3</em>")
-						 .arg(conn.getConnectionParam(Connection::ParamDbName))
-						 .arg(conn.getConnectionParam(Connection::ParamServerIp).isEmpty() ?
-								  conn.getConnectionParam(Connection::ParamServerFqdn) : conn.getConnectionParam(Connection::ParamServerIp))
-											 .arg(conn.getConnectionParam(Connection::ParamPort)));
+	db_name_lbl->setText(conn.getConnectionId(true, true, true));
 }
 
 void SQLExecutionWidget::setSQLCommand(const QString &sql)
@@ -302,7 +294,7 @@ void SQLExecutionWidget::fillResultsTable(Catalog &catalog, ResultSet &res, QTab
 		end=std::unique(type_ids.begin(), type_ids.end());
 		type_ids.erase(end, type_ids.end());
 
-		types=catalog.getObjectsAttributes(ObjectType::Type, QString(), QString(), type_ids);
+		types=catalog.getObjectsAttributes(ObjectType::Type, "", "", type_ids);
 
 		for(auto &tp : types)
 			type_names[tp[Attributes::Oid].toUInt()]=tp[Attributes::Name];
@@ -750,7 +742,7 @@ int SQLExecutionWidget::clearAll()
 
 	if(res==QDialog::Accepted)
 	{
-		sql_cmd_txt->setPlainText(QString());
+		sql_cmd_txt->setPlainText("");
 		msgoutput_lst->clear();
 		msgoutput_lst->setVisible(true);
 		results_parent->setVisible(false);
@@ -819,7 +811,7 @@ QByteArray SQLExecutionWidget::generateBuffer(QTableView *results_tbw, QChar sep
 			line.append(str_pattern.arg(value));
 		}
 
-		buf.append(line.join(separator));
+		buf.append(line.join(separator).toUtf8());
 		buf.append('\n');
 		line.clear();
 	}
@@ -848,7 +840,7 @@ QByteArray SQLExecutionWidget::generateBuffer(QTableView *results_tbw, QChar sep
 			line.append(str_pattern.arg(value));
 		}
 
-		buf.append(line.join(separator));
+		buf.append(line.join(separator).toUtf8());
 		line.clear();
 		buf.append('\n');
 	}
@@ -959,7 +951,7 @@ void SQLExecutionWidget::saveSQLHistory()
 
 		attribs.clear();
 		attribs[Attributes::Commands] = commands;
-		buffer.append(schparser.getCodeDefinition(attribs));
+		buffer.append(schparser.getCodeDefinition(attribs).toUtf8());
 
 
 		file.setFileName(GlobalAttributes::getConfigurationFilePath(GlobalAttributes::SQLHistoryConf));

@@ -293,6 +293,8 @@ class Relationship: public BaseRelationship {
 		 unique key used in 1-1 relationships */
 		vector<Constraint *> getGeneratedConstraints();
 
+		virtual void configureSearchAttributes();
+
 	public:
 		//! \brief String used as the name suffix separator. Default '_'
 		static const QString SuffixSeparator,
@@ -511,6 +513,7 @@ class Relationship: public BaseRelationship {
 		friend class RelationshipWidget;
 		friend class ModelExportHelper;
 		friend class ModelsDiffHelper;
+		friend class ModelDatabaseDiffForm;
 };
 
 #endif

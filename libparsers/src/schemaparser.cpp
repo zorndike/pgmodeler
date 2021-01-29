@@ -527,25 +527,21 @@ bool SchemaParser::evaluateComparisonExpr()
 							left_val = QVariant(attributes[attrib].toFloat());
 							right_val = QVariant(value.toFloat());
 							oper.remove('f');
+							expr_is_true = getExpressionResult<float>(oper, left_val, right_val);
 						}
 						else if(oper.endsWith('i'))
 						{
 							left_val = QVariant(attributes[attrib].toInt());
 							right_val = QVariant(value.toInt());
 							oper.remove('i');
+							expr_is_true = getExpressionResult<int>(oper, left_val, right_val);
 						}
 						else
 						{
 							left_val = QVariant(attributes[attrib]);
 							right_val = QVariant(value);
+							expr_is_true = getExpressionResult<QString>(oper, left_val, right_val);
 						}
-
-						expr_is_true=((oper==TokenEqOper && (left_val == right_val)) ||
-													(oper==TokenNeOper && (left_val != right_val)) ||
-													(oper==TokenGtOper && (left_val > right_val)) ||
-													(oper==TokenLtOper && (left_val < right_val)) ||
-													(oper==TokenGtEqOper && (left_val >= right_val)) ||
-													(oper==TokenLtEqOper && (left_val <= right_val)));
 
 						end_eval=true;
 					}
@@ -671,8 +667,7 @@ void SchemaParser::defineAttribute()
 		}
 
 		/* Creates the attribute in the attribute map of the schema, making the attribute
-	   available on the rest of the script being parsed */
-
+		 * available on the rest of the script being parsed */
 		attributes[attrib]=value;
 	}
 	else
@@ -716,7 +711,7 @@ void SchemaParser::unsetAttribute()
 										ErrorCode::InvalidAttribute,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 					}
 
-					attributes[attrib]=QString();
+					attributes[attrib]="";
 				break;
 
 				default:
@@ -993,7 +988,7 @@ QString SchemaParser::getCodeDefinition(attribs_map &attribs)
 					{
 						//Converting the metacharacter drawn to the character that represents this
 						chr=translateMetaCharacter(meta);
-						meta=QString();
+						meta="";
 						meta+=chr;
 
 						//If the parser is inside an 'if / else' extracting tokens
@@ -1034,7 +1029,7 @@ QString SchemaParser::getCodeDefinition(attribs_map &attribs)
 											ErrorCode::UnkownAttribute,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 						}
 						else
-							attributes[atrib]=QString();
+							attributes[atrib]="";
 					}
 
 					//If the parser is inside an 'if / else' extracting tokens
@@ -1044,7 +1039,7 @@ QString SchemaParser::getCodeDefinition(attribs_map &attribs)
 						if(!(!if_expr && vet_tk_if[if_level] && !vet_tk_then[if_level]))
 						{
 							word=atrib;
-							atrib=QString();
+							atrib="";
 							atrib+=CharIniAttribute;
 							atrib+=word;
 							atrib+=CharEndAttribute;
@@ -1098,8 +1093,8 @@ QString SchemaParser::getCodeDefinition(attribs_map &attribs)
 						bool extract=false;
 
 						/* Extracts or unset the attribute only if the process is not in the middle of a 'if-then-else' or
-			   if the parser is inside the 'if' part and the expression is evaluated as true, or in the 'else' part
-			   and the related 'if' is false. Otherwise the line where %set is located will be completely ignored */
+							if the parser is inside the 'if' part and the expression is evaluated as true, or in the 'else' part
+							and the related 'if' is false. Otherwise the line where %set is located will be completely ignored */
 						extract=(if_level < 0 || vet_expif.empty());
 
 						if(!extract && if_level >= 0)
@@ -1128,8 +1123,18 @@ QString SchemaParser::getCodeDefinition(attribs_map &attribs)
 						}
 						else
 						{
+							ignoreBlankChars(buffer[line]);
+
+							/* When the %set instruction is ignored due to the fact of it being under a if expression evaluated as false
+							 * there's the need to create an empty representation of it in the set of attributes so in further expressions
+							 * evaluations the parser isn't broke by a unknow attribute exception */
+							atrib = getAttribute();
+							if(attributes.count(atrib) == 0)
+								attributes[atrib]="";
+
 							column=0;
 							line++;
+							atrib.clear();
 						}
 					}
 					else
@@ -1361,4 +1366,14 @@ QString SchemaParser::getCodeDefinition(const QString &filename, attribs_map &at
 	{
 		throw Exception(e.getErrorMessage(),e.getErrorCode(),__PRETTY_FUNCTION__,__FILE__,__LINE__, &e);
 	}
+}
+
+template<typename Type>
+bool SchemaParser::getExpressionResult(const QString &oper, const QVariant &left_val, const QVariant &right_val){
+	return ((oper==TokenEqOper && (left_val.value<Type>() == right_val.value<Type>())) ||
+					(oper==TokenNeOper && (left_val.value<Type>() != right_val.value<Type>())) ||
+					(oper==TokenGtOper && (left_val.value<Type>() > right_val.value<Type>())) ||
+					(oper==TokenLtOper && (left_val.value<Type>() < right_val.value<Type>())) ||
+					(oper==TokenGtEqOper && (left_val.value<Type>() >= right_val.value<Type>())) ||
+					(oper==TokenLtEqOper && (left_val.value<Type>() <= right_val.value<Type>())));
 }

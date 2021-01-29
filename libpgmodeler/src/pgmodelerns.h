@@ -30,11 +30,26 @@
 #include <QCryptographicHash>
 
 namespace PgModelerNs {
+	//! \brief Default char for data/value separator for special usage
+	static const QString DataSeparator("•");
+
 	//! \brief Default char used as unescaped value start delimiter
 	static const QChar UnescValueStart='/';
 
 	//! \brief Default char used as unescaped value end delimiter
 	static const QChar	UnescValueEnd='/';
+
+	//! \brief Indicates the default wildcard character expected to be found in wildcard patterns
+	static const QChar WildcardChar('*');
+
+	//! \brief Indicates the character used to separate filter fields in the filtering string
+	static const QChar FilterSeparator = ':';
+
+	//! \brief Indicates the wildcard filtering mode in the object listing
+	extern const QString FilterWildcard,
+
+	//! \brief Indicates the regexp (POSIX) filtering mode in the object listing
+	FilterRegExp;
 
 	/*! \brief Template function that makes a copy from 'copy_obj' to 'psrc_obj' doing the cast to the
 		 correct object type. If the source object (psrc_obj) is not allocated the function allocates the attributes
@@ -58,7 +73,7 @@ namespace PgModelerNs {
 	 * parameter is true the comparison is not made. */
 	template <class Class>
 	QString generateUniqueName(BaseObject *obj, vector<Class *> &obj_vector,
-														 bool fmt_name = false, const QString &suffix = QString(),
+														 bool fmt_name = false, const QString &suffix = "",
 														 bool use_suf_on_conflict = false, bool discard_input_obj = false)
 	{
 		unsigned counter=0;
@@ -84,7 +99,7 @@ namespace PgModelerNs {
 			obj_name += suffix;
 
 		counter = (use_suf_on_conflict && obj_type!= ObjectType::Operator? 0 : 1);
-		buffer.append(obj_name);
+		buffer.append(obj_name.toUtf8());
 		id = hash.result().toHex().mid(0,6);
 		len = obj_name.size() + id.size();
 
@@ -121,8 +136,8 @@ namespace PgModelerNs {
 				{
 					aux_name=QString("%1%2%3")
 									 .arg(obj_name)
-									 .arg(use_suf_on_conflict ? suffix : QString())
-									 .arg(use_suf_on_conflict && counter == 0 ? QString() : QString::number(counter));
+									 .arg(use_suf_on_conflict ? suffix : "")
+									 .arg(use_suf_on_conflict && counter == 0 ? "" : QString::number(counter));
 					counter++;
 				}
 

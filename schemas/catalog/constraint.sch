@@ -3,15 +3,21 @@
 #          Code generation can be broken if incorrect changes are made.
 
 %if {list} %then
-[ SELECT cs.oid, cs.conname AS name, 
-  tb.oid::regclass::text AS parent,
+
+  %set {parent-name} [ ns.nspname || '.' || tb.relname ]
+
+  %if {use-signature} %then
+    %set {signature} {parent-name} [ || '.' || ]
+  %end
+
+[ SELECT cs.oid, cs.conname AS name, ] {parent-name} [ AS parent,
   'table' AS parent_type 
   FROM pg_constraint AS cs 
-  LEFT JOIN pg_class AS tb ON cs.conrelid = tb.oid ]
+  LEFT JOIN pg_class AS tb ON cs.conrelid = tb.oid 
+  LEFT JOIN pg_namespace AS ns ON ns.oid = cs.connamespace ]
 
  %if {schema} %then
-   [ LEFT JOIN pg_namespace AS ns ON ns.oid = cs.connamespace
-     WHERE nspname= ] '{schema}'
+   [ WHERE nspname= ] '{schema}'
 
    %if {table} %then
      [ AND relkind IN ('r','p','f') AND relname=] '{table}'
@@ -42,7 +48,11 @@
   %end
   
   %if {name-filter} %then
-    [ AND ] ( {name-filter} )
+    [ AND ] ( {signature} cs.conname ~* E'{name-filter}' )
+  %end
+  
+  %if {extra-condition} %then
+    [ AND ] ( {extra-condition} )
   %end
   
 %else
@@ -51,11 +61,11 @@
 	     cs.conkey AS src_columns, cs.confkey AS dst_columns, 
 	     cs.condeferrable AS deferrable_bool, cs.confrelid AS ref_table,
 	     cl.reltablespace AS tablespace, cs.conexclop AS operators,
-             am.amname AS index_type, cl.reloptions AS factor,  ]
+		 am.amname AS index_type, cl.reloptions AS factor,  ]
              
      [ id.indkey::oid] $ob $cb [ AS columns,
        id. indclass::oid] $ob $cb [ AS opclasses,
-       pg_get_expr(id.indpred, id.indexrelid) AS condition,
+	   pg_get_expr(id.indpred, id.indrelid) AS condition,
        pg_get_constraintdef(cs.oid) AS expressions, ]
 
      %if ({pgsql-ver} <=f "9.1") %then

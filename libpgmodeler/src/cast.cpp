@@ -24,11 +24,17 @@ Cast::Cast()
 	cast_function=nullptr;
 	cast_type=Explicit;
 	is_in_out=false;
-	attributes[Attributes::SourceType]=QString();
-	attributes[Attributes::DestType]=QString();
-	attributes[Attributes::CastType]=QString();
-	attributes[Attributes::IoCast]=QString();
-	attributes[Attributes::Function]=QString();
+	attributes[Attributes::SourceType]="";
+	attributes[Attributes::DestType]="";
+	attributes[Attributes::CastType]="";
+	attributes[Attributes::IoCast]="";
+	attributes[Attributes::Function]="";
+}
+
+void Cast::setName(const QString &)
+{
+	//Configures the cast name (in form of signature: cast(src_type, dst_type) )
+	this->obj_name=QString("cast(%1,%2)").arg(~types[SrcType]).arg(~types[DstType]);
 }
 
 void Cast::setDataType(unsigned type_idx, PgSqlType type)
@@ -50,8 +56,7 @@ void Cast::setDataType(unsigned type_idx, PgSqlType type)
 		//Raises an error if the type index is invalid
 		throw Exception(ErrorCode::RefTypeInvalidIndex,__PRETTY_FUNCTION__,__FILE__,__LINE__);
 
-	//Configures the cast name (in form of signature: cast(src_type, dst_type) )
-	this->obj_name=QString("cast(%1,%2)").arg(~types[SrcType]).arg(~types[DstType]);
+	setName("");
 }
 
 void Cast::setCastType(unsigned cast_type)
@@ -183,14 +188,14 @@ QString Cast::getCodeDefinition(unsigned def_type)
 			attributes[Attributes::Function]=cast_function->getCodeDefinition(def_type, true);
 	}
 	else
-		attributes[Attributes::IoCast]=(is_in_out ? Attributes::True : QString());
+		attributes[Attributes::IoCast]=(is_in_out ? Attributes::True : "");
 
 	if(cast_type==Assignment)
 		attributes[Attributes::CastType]=Attributes::Assignment;
 	else if(cast_type==Implicit)
 		attributes[Attributes::CastType]=Attributes::Implicit;
 	else
-		attributes[Attributes::CastType]=QString();
+		attributes[Attributes::CastType]="";
 
 	if(def_type==SchemaParser::SqlDefinition)
 		attributes[Attributes::CastType]=attributes[Attributes::CastType].toUpper();

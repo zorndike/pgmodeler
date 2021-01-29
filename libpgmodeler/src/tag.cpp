@@ -22,15 +22,11 @@ unsigned Tag::tag_id=3000;
 
 Tag::Tag()
 {
-	QStringList attribs={ Attributes::TableName,  Attributes::TableSchemaName,
-						  Attributes::TableTitle, Attributes::TableBody,
-						  Attributes::TableExtBody };
-
 	obj_type=ObjectType::Tag;
 	object_id=Tag::tag_id++;
-	attributes[Attributes::Styles]=QString();
+	attributes[Attributes::Styles]="";
 
-	for(auto &attr : attribs)
+	for(auto &attr : getColorAttributes())
 	{
 		if(attr!=Attributes::TableName && attr!=Attributes::TableSchemaName)
 			color_config[attr] = { QColor(0,0,0), QColor(0,0,0), QColor(0,0,0) };
@@ -142,7 +138,7 @@ QString Tag::getCodeDefinition(unsigned def_type)
 QString Tag::getCodeDefinition(unsigned def_type, bool reduced_form)
 {
 	if(def_type==SchemaParser::SqlDefinition)
-		return QString();
+		return "";
 	else
 	{
 		QString code_def=getCachedCode(def_type, reduced_form);
@@ -155,7 +151,7 @@ QString Tag::getCodeDefinition(unsigned def_type, bool reduced_form)
 			for(auto &itr : color_config)
 			{
 				attribs[Attributes::Id]=itr.first;
-				attribs[Attributes::Colors]=QString();
+				attribs[Attributes::Colors]="";
 
 				if(itr.first==Attributes::TableName || itr.first==Attributes::TableSchemaName)
 					attribs[Attributes::Colors]=itr.second[FillColor1].name();
@@ -173,6 +169,16 @@ QString Tag::getCodeDefinition(unsigned def_type, bool reduced_form)
 
 		return BaseObject::getCodeDefinition(def_type, reduced_form);
 	}
+}
+
+QStringList Tag::getColorAttributes()
+{
+	static QStringList attribs={ Attributes::TableName,  Attributes::TableSchemaName,
+															 Attributes::TableTitle, Attributes::TableBody,
+															 Attributes::TableExtBody, Attributes::TableTogglerButtons,
+															 Attributes::TableTogglerBody };
+
+	return attribs;
 }
 
 void Tag::operator = (Tag &tag)
